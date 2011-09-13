@@ -1,7 +1,7 @@
 (ns clj-hbase.core
   (:import [org.apache.hadoop.conf Configuration]
            [org.apache.hadoop.hbase HBaseConfiguration HTableDescriptor HColumnDescriptor]
-           [org.apache.hadoop.hbase.client HTable HConnectionManager HBaseAdmin]))
+           [org.apache.hadoop.hbase.client Get Result Put HTable HConnectionManager HBaseAdmin]))
 
 (defprotocol ToClojure
   (to-clojure [_]))
@@ -23,6 +23,7 @@
   (HConnectionManager/getConnection config))
 
 (declare ^:dynamic *connection*)
+(declare ^:dynamic *table*)
 
 (defn list-tables
   ([] (list-tables *connection*))
@@ -52,6 +53,27 @@
   "Creates a table with optional column families: strings."
   [administrator ^String name & family-names]
   (.createTable administrator (create-table-descriptor name family-names)))
+
+(defn put
+  "Stores value for row row-key in column with timestamp. Timestamp
+   should be a long. row-key, column and value should all be byte[]."
+  ([row-key family column timestamp value]
+     (put *table* row-key family column timestamp value))
+  ([table row-key family column timestamp value]
+     (.put table (doto (Put. row-key)
+                   (.add family column timestamp value)))))
+
+(defn fetch
+  "Executes a Get to load all data for the specified row-key"
+  ([row-key]
+     (get2 *table* row-key))
+  ([table row-key]
+     (.getMap (.get table (Get. row-key)))))
+
+(defmacro with-table
+  [config name & body]
+  `(binding [*table* (HTable. ~config ~name)]
+     ~@body))
 
 (defn create-administrator
   [configuration]
