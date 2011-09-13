@@ -41,9 +41,10 @@
   (HColumnDescriptor. name))
 
 (defn create-table-descriptor
+  "Name is expected to be a byte array"
   [name family-names]
   (let [descriptors (map create-column-descriptor family-names)
-           table (HTableDescriptor. (.getBytes name))]
+           table (HTableDescriptor. name)]
        (doseq [d descriptors] (.addFamily table d))
        table))
 
