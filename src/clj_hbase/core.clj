@@ -1,15 +1,18 @@
 (ns clj-hbase.core
   (:import [org.apache.hadoop.conf Configuration]
-           [org.apache.hadoop.hbase HBaseConfiguration HTableDescriptor]
+           [org.apache.hadoop.hbase HBaseConfiguration HTableDescriptor HColumnDescriptor]
            [org.apache.hadoop.hbase.client HTable HConnectionManager HBaseAdmin]))
 
 (defprotocol ToClojure
   (to-clojure [_]))
 
 (extend-protocol ToClojure
+  HColumnDescriptor
+  (to-clojure [x] {:name (.getName x)})
   HTableDescriptor
-  (to-clojure [^HTableDescriptor x]
-    {:name (String. (.getName x))}))
+  (to-clojure [x]
+    {:name (.getName x)
+     :families (map to-clojure (.getFamilies x))}))
 
 (defn create-config
   []
@@ -25,9 +28,29 @@
   ([] (list-tables *connection*))
   ([connection] (map to-clojure (.listTables connection))))
 
+(defn disable-table
+  [administrator name]
+  (.disableTable administrator name))
+
+(defn delete-table
+  [administrator name]
+  (.deleteTable administrator name))
+
+(defn create-column-descriptor
+  [name]
+  (HColumnDescriptor. name))
+
+(defn create-table-descriptor
+  [name family-names]
+  (let [descriptors (map create-column-descriptor family-names)
+           table (HTableDescriptor. (.getBytes name))]
+       (doseq [d descriptors] (.addFamily table d))
+       table))
+
 (defn create-table
-  [administrator ^String name]
-  (.createTable administrator (HTableDescriptor. (.getBytes name))))
+  "Creates a table with optional column families: strings."
+  [administrator ^String name & family-names]
+  (.createTable administrator (create-table-descriptor name family-names)))
 
 (defn create-administrator
   [configuration]
