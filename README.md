@@ -10,15 +10,33 @@ Although other HBase clients exist I wanted to learn more about the API and evol
     ; where it expects to have core-site.xml and hbase-site.xml
     ; that tell the client how to connect to the cluster.
     (def config (create-config))
-    (def admin (create-administrator config))
+
+### Creating and Listing tables
+
     (with-connection config
       (list-tables))
     ; ()
     
-    (create-table "MyFirstTable")
+    (def admin (create-administrator config))
+    (create-table admin "MyFirstTable")
     (with-connection config
       (list-tables))
+
     ; ({:name "MyFirstTable"})
+
+### Storing rows
+
+    (with-table config "PaulsFirstTable"
+      (put (.getBytes "key1")
+           (.getBytes "family1")
+           (.getBytes "colA")
+           1 ; timestamp/version
+           (.getBytes "This is my value")))
+
+### Retrieving rows
+
+    (with-table config "PaulsFirstTable"
+      (fetch (.getBytes "key1")))
 
 ## License
 
