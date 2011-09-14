@@ -1,7 +1,7 @@
 (ns clj-hbase.core
   (:import [org.apache.hadoop.conf Configuration]
            [org.apache.hadoop.hbase HBaseConfiguration HTableDescriptor HColumnDescriptor]
-           [org.apache.hadoop.hbase.client Get Result Put HTable HConnectionManager HBaseAdmin]))
+           [org.apache.hadoop.hbase.client Get Result Put HTable HTablePool HConnectionManager HBaseAdmin]))
 
 (defprotocol ToClojure
   (to-clojure [_]))
@@ -63,17 +63,24 @@
      (.put table (doto (Put. row-key)
                    (.add family column timestamp value)))))
 
-(defn fetch
+(defn get
   "Executes a Get to load all data for the specified row-key"
   ([row-key]
-     (get2 *table* row-key))
+     (clj-hbase.core/get *table* row-key))
   ([table row-key]
      (.getMap (.get table (Get. row-key)))))
 
+(defn create-table-pool
+  [config]
+  (HTablePool. config Integer/MAX_VALUE))
+
+(def table-pool (memoize create-table-pool))
+
 (defmacro with-table
   [config name & body]
-  `(binding [*table* (HTable. ~config ~name)]
-     ~@body))
+  `(let [pool# (table-pool ~config)]
+     (binding [*table* (.getTable pool# ~name)]
+       ~@body)))
 
 (defn create-administrator
   [configuration]
